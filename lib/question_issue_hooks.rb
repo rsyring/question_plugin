@@ -93,12 +93,11 @@ JS
     else
       question_count = Question.count_of_open_for_anyone()
     end
-    puts question_count
     if question_count > 0
       retval += link_to(l(:text_questions_for_anyone) + " (#{question_count})",
                      {
                        :controller => 'questions',
-                       :action => 'my_issue_filter',
+                       :action => 'anyone_issue_filter',
                        :project => project,
                        :only_path => true
                      },

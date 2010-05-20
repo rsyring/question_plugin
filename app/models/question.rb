@@ -32,7 +32,10 @@ class Question < ActiveRecord::Base
   end
 
   def self.count_of_open_for_anyone()
-    Question.count(:conditions => {:assigned_to_id => nil, :opened => true})
+    project_ids = User.current.projects.collect{|p| "#{p.id}"}.join(',')
+    Question.count(:conditions => ["#{Question.table_name}.assigned_to_id IS NULL AND #{Project.table_name}.id IN (#{project_ids}) AND #{Question.table_name}.opened = ?",
+                    true],
+                   :include => [:issue => [:project]])
   end
 
   # TODO: refactor to named_scope

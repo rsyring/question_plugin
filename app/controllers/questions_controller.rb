@@ -7,6 +7,11 @@ class QuestionsController < ApplicationController
     new_filter_for_questions_assigned_to('me')
     redirect_to :controller => 'issues', :action => 'index', :project_id => params[:project]
   end
+  
+  def anyone_issue_filter
+    new_filter_for_questions_assigned_to('anyone')
+    redirect_to :controller => 'issues', :action => 'index', :project_id => params[:project]
+  end
 
   def user_issue_filter
     new_filter_for_questions_assigned_to(params[:user_id])

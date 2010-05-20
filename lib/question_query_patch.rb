@@ -42,16 +42,17 @@ module QuestionQueryPatch
       @available_filters = available_filters_before_question
       
       user_values = []
-      user_values << ["<< #{l(:label_me)} >>", "me"] if User.current.logged?
       if project
         user_values += project.users.sort.collect{|s| [s.name, s.id.to_s] }
       else
         user_values += User.current.projects.collect(&:users).flatten.uniq.sort.collect{|s| [s.name, s.id.to_s] }
       end
-
+      questions_asked_by_user_values = []
+      questions_asked_by_user_values << ["<< #{l(:label_me)} >>", "me"] if User.current.logged?
+      questions_assigned_to_user_values = questions_asked_by_user_values + [["<< #{l(:text_anyone)} >>", "anyone"]]
       question_filters = {
-        "question_assigned_to_id" => { :type => :list, :order => 14, :values => user_values },
-        "question_asked_by_id" => { :type => :list, :order => 14, :values => user_values }
+        "question_assigned_to_id" => { :type => :list, :order => 14, :values => questions_assigned_to_user_values + user_values },
+        "question_asked_by_id" => { :type => :list, :order => 14, :values => questions_asked_by_user_values + user_values }
       }
       
       return @available_filters.merge(question_filters)
@@ -64,8 +65,10 @@ module QuestionQueryPatch
 
         db_table = Question.table_name
         if field == "question_assigned_to_id"
+          is_anyone = v.delete("anyone") ? true : false
           db_field = 'assigned_to_id'
         else
+          is_anyone = false
           db_field = 'author_id'
         end
         
@@ -73,11 +76,30 @@ module QuestionQueryPatch
         # "me" value subsitution
         v.push(User.current.logged? ? User.current.id.to_s : "0") if v.delete("me")
         
+        # string of user ids that is used int the sql below
+        id_string = v.collect{|val| "'#{connection.quote_string(val)}'"}.join(",")
+        
         case operator
         when "="
-          sql = "#{db_table}.#{db_field} IN (" + v.collect{|val| "'#{connection.quote_string(val)}'"}.join(",") + ") AND #{db_table}.opened = true"
+          if is_anyone
+            if v.empty?
+              sql = "#{db_table}.#{db_field} IS NULL AND #{db_table}.opened = true" 
+            else
+              sql = "(#{db_table}.#{db_field} IS NULL OR #{db_table}.#{db_field} IN (" + id_string + ")) AND #{db_table}.opened = true"
+            end
+          else
+            sql = "#{db_table}.#{db_field} IN (" + id_string + ") AND #{db_table}.opened = true"
+          end
         when "!"
-          sql = "(#{db_table}.#{db_field} IS NULL OR #{db_table}.#{db_field} NOT IN (" + v.collect{|val| "'#{connection.quote_string(val)}'"}.join(",") + ")) AND #{db_table}.opened = true"
+          if is_anyone
+            if v.empty?
+              sql = "#{db_table}.#{db_field} IS NOT NULL AND #{db_table}.opened = true"
+            else
+              sql = "(#{db_table}.#{db_field} IS NOT NULL AND #{db_table}.#{db_field} NOT IN (#{id_string})) AND #{db_table}.opened = true"
+            end
+          else
+            sql = "(#{db_table}.#{db_field} IS NULL OR #{db_table}.#{db_field} NOT IN (#{id_string})) AND #{db_table}.opened = true"
+          end
         end
 
         return sql
