@@ -25,14 +25,22 @@ JS
   def view_issues_edit_notes_bottom(context = { })
     f = context[:form]
     @issue = context[:issue]
+    @user = User.current
     o = ''
+    # put the field that allows the user to select the question they want to answer
+    if @issue.pending_question?(@user)
+      questions = @issue.pending_questions(@user)
+      o << content_tag(:p,
+                    "<label>#{l(:field_question_to_answer)}</label> " +
+                    select_tag('question_to_answer', options_for_select([[]] + questions.collect {|q| [truncate(q.journal.notes, Question::TruncateTo), q.id]}))
+                    )
+    end
     o << content_tag(:p, 
                      "<label>#{l(:field_question_assign_to)}</label> " +
                      text_field_tag('note[question_assigned_to]', nil, :size => "40"))
 
     o << content_tag(:div,'', :id => "note_question_assigned_to_choices", :class => "autocomplete")
     o << javascript_tag("new Ajax.Autocompleter('note_question_assigned_to', 'note_question_assigned_to_choices', '#{ url_for(:controller => 'questions', :action => 'autocomplete_for_user_login', :id => @issue.project, :issue_id => @issue) }', { minChars: 1, frequency: 0.5, paramName: 'user', select: 'field' });")
-      
     return o
   end
   
@@ -52,6 +60,10 @@ JS
           assign_question_to_user(journal, User.find_by_login(params[:note][:question_assigned_to]))
         end
       end
+    end
+    
+    if params[:question_to_answer] and !params[:question_to_answer].empty?
+      Question.close!(params[:question_to_answer], User.current, journal)
     end
     
     return ''

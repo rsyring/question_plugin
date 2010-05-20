@@ -85,10 +85,14 @@ module QuestionIssuePatch
       return false
     end
     
-    def close_pending_questions(user, closing_journal)
+    def pending_questions(user)
+      q = []
       self.open_questions.find(:all).each do |question|
-        question.close!(closing_journal) if question.assigned_to == user || question.for_anyone?
+        if question.assigned_to == user || question.for_anyone?
+          q << question
+        end
       end
+      return q
     end
 
     def formatted_questions

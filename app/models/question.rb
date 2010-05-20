@@ -15,11 +15,14 @@ class Question < ActiveRecord::Base
     self.assigned_to.nil?
   end
   
-  def close!(closing_journal=nil)
-    if self.opened
-      self.opened = false
-      self.save!
-      QuestionMailer.deliver_answered_question(self, closing_journal) if closing_journal
+  def self.close!(qid, user, closing_journal=nil)
+    q = Question.find(qid)
+    if q
+      if q.opened and q.assigned_to.id == user.id
+        q.opened = false
+        q.save!
+        QuestionMailer.deliver_answered_question(q, closing_journal) if closing_journal
+      end
     end
   end
 
