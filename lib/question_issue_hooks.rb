@@ -76,9 +76,9 @@ JS
     else
       question_count = Question.count_of_open_for_user(User.current)
     end
-    
+    retval = ''
     if question_count > 0
-      return link_to(l(:text_questions_for_me) + " (#{question_count})",
+      retval += link_to(l(:text_questions_for_me) + " (#{question_count})",
                      {
                        :controller => 'questions',
                        :action => 'my_issue_filter',
@@ -87,10 +87,25 @@ JS
                      },
                      { :class => 'question-link' }
                      ) + '<br />'
-    else
-      return ''
     end
-    
+    if project
+      question_count = Question.count_of_open_for_anyone_on_project(project)
+    else
+      question_count = Question.count_of_open_for_anyone()
+    end
+    puts question_count
+    if question_count > 0
+      retval += link_to(l(:text_questions_for_anyone) + " (#{question_count})",
+                     {
+                       :controller => 'questions',
+                       :action => 'my_issue_filter',
+                       :project => project,
+                       :only_path => true
+                     },
+                     { :class => 'question-link' }
+                     ) + '<br />'
+    end
+    return retval
   end
 
   private
